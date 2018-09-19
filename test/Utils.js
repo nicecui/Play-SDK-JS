@@ -31,6 +31,7 @@ function newGooglePlay(userId) {
     appId: 'zPpPQwb09gfYvwy89rEFoYzE-gzGzoHsz',
     appKey: 'mOvH23zgB451ylHn0xdEf8PL',
     region: Region.NorthChina,
+    feature: 'wechat',
   });
   play.userId = userId;
   return play;
