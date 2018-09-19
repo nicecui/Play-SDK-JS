@@ -18,35 +18,39 @@ export default class LobbyConnection extends Connection {
     this._requests = {};
   }
 
-  async connect(routerUrl, appId, sdkVersion) {
-    const query = { appId, sdkVersion };
-    // 获取 Lobby 服务器信息
-    this._httpReq = request
-      .get(routerUrl)
-      .query(query)
-      .end((err, res) => {
-        if (err) {
-          return Promise.reject(new PlayError(-1, 'http error'));
-        }
-        debug(res.text);
-        const body = JSON.parse(res.text);
+  connect(routerUrl, appId, sdkVersion) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const query = { appId, sdkVersion };
+        // 获取 Lobby 服务器信息
+        this._httpRes = await request.get(routerUrl).query(query);
+        const body = JSON.parse(this._httpRes.body);
         this._primaryServer = body.server;
         this._secondaryServer = body.secondary;
         this._ttl = body.ttl;
         // 建立 Socket 连接
         const { WebSocket } = adapters;
         this._ws = new WebSocket(this._primaryServer);
-        this._ws.onopen = () => {
+        this._ws.onopen = async () => {
           debug('Lobby socket opened');
-          return Promise.resolve();
+          // 登录
+          await this.openSession();
+          // TODO 发送连接成功的事件
+          resolve();
         };
-        this._ws.onmessage = msg => {};
-        this._ws.onclose = err => {
-          error(err);
-          return Promise.reject(new PlayError(-2, 'websocket error'));
+        this._ws.onmessage = this.handleMessage.bind(this);
+        this._ws.onclose = e => {
+          // 连接失败
+          error(e);
+          reject(new PlayError(-2, 'websocket error'));
         };
-        // 打开 Session
-      });
+      } catch (e) {
+        debug(e);
+        // TODO 区分错误
+        // TODO 发送连接错误的事件
+        reject();
+      }
+    });
   }
 
   async openSession() {
